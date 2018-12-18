@@ -10,7 +10,6 @@ import pymp
 import time
 import timeit
 
-from apercal.modules.base import BaseModule
 from apercal.libs.calculations import calc_dr_maj, calc_theoretical_noise, calc_theoretical_noise_threshold, \
     calc_dynamic_range_threshold, calc_clean_cutoff, calc_noise_threshold, calc_mask_threshold, get_freqstart, \
     calc_dr_min, calc_line_masklevel, calc_miniter
@@ -22,11 +21,23 @@ from apercal.exceptions import ApercalException
 logger = logging.getLogger(__name__)
 
 
-class line_parallel(BaseModule):
+class line_parallel:
     """
     Line class to do continuum subtraction and prepare data for line imaging.
     """
-    module_name = 'LINE'
+    fluxcal = None
+    polcal = None
+    target = None
+    basedir = None
+    beam = None
+    rawsubdir = None
+    crosscalsubdir = None
+    selfcalsubdir = None
+    linesubdir = None
+    contsubdir = None
+    polsubdir = None
+    mossubdir = None
+    transfersubdir = None
 
     line_splitdata = None
     line_splitdata_chunkbandwidth = None
@@ -84,49 +95,6 @@ class line_parallel(BaseModule):
         self.image_line()
         logger.info("CONTINUUM SUBTRACTION done ")
 
-    def go_timed(self):
-        """
-        Executes the whole continuum subtraction process in the following order:
-        splitdata
-        transfergains
-        subtract
-        """
-        logger.info("Starting CONTINUUM SUBTRACTION ")
-        start = time.time()
-        timeit_splitdata_time = timeit.Timer(lambda: self.splitdata(), setup="from apercal import *").timeit(number=1)
-        end = time.time()
-        splitdata_time = end - start
-        logger.info("(ORIGINAL) Splitting data: " + str(splitdata_time) + " s ")
-        logger.info("(ORIGINAL) Splitting data (timeit): " + str(timeit_splitdata_time) + " s ")
-        start = time.time()
-        timeit_transfergains_time = timeit.Timer(lambda: self.transfergains(), setup="from apercal import *").timeit(
-            number=1)
-        end = time.time()
-        transfergains_time = end - start
-        logger.info("(ORIGINAL) Transfer gains: " + str(transfergains_time) + " s ")
-        logger.info("(ORIGINAL) Transfer gains (timeit): " + str(timeit_transfergains_time) + " s ")
-        start = time.time()
-        timeit_subtract_time = timeit.Timer(lambda: self.subtract(), setup="from apercal import *").timeit(number=1)
-        end = time.time()
-        subtract_time = end - start
-        logger.info("(ORIGINAL) Subtract continuum: " + str(subtract_time) + " s ")
-        logger.info("(ORIGINAL) Subtract continuum (timeit): " + str(timeit_subtract_time) + " s ")
-        start = time.time()
-        end = time.time()
-        image_line_time = end - start
-        logger.info("(ORIGINAL) Line imaging: " + str(image_line_time) + " s ")
-        logger.info("(ORIGINAL) Timing summary: ")
-        logger.info("(ORIGINAL) Splitting data: " + str(splitdata_time) + " s ")
-        logger.info("(ORIGINAL) Splitting data (timeit): " + str(timeit_splitdata_time) + " s ")
-        logger.info("(ORIGINAL) Transfer gains: " + str(transfergains_time) + " s ")
-        logger.info("(ORIGINAL) Transfer gains (timeit): " + str(timeit_transfergains_time) + " s ")
-        logger.info("(ORIGINAL) Subtract continuum: " + str(subtract_time) + " s ")
-        logger.info("(ORIGINAL) Subtract continuum (timeit): " + str(timeit_subtract_time) + " s ")
-        logger.info("(ORIGINAL) Line imaging: " + str(image_line_time) + " s ")
-        logger.info("(ORIGINAL) Full line module: " + str(
-            splitdata_time + transfergains_time + subtract_time + image_line_time) + " s ")
-        logger.info("CONTINUUM SUBTRACTION done ")
-
     def go_sequential(self):
         """
         Executes the whole continuum subtraction process in the following order:
@@ -139,61 +107,6 @@ class line_parallel(BaseModule):
         self.transfergains()
         self.subtract()
         self.image_line_sequential()
-        logger.info("CONTINUUM SUBTRACTION done ")
-
-    def go_sequential_timed(self):
-        """
-        Executes the whole continuum subtraction process in the following order:
-        splitdata
-        transfergains
-        subtract
-        """
-        logger.info("Starting CONTINUUM SUBTRACTION ")
-        start = time.time()
-        # self.splitdata_sequential(threads)
-        # not sure this is entirely recommended: if each thread opens own copy of entire file, memory could become full
-        timeit_splitdata_time = timeit.Timer(lambda: self.splitdata_sequential(), setup="from apercal import *").timeit(
-            number=1)
-        end = time.time()
-        splitdata_time = end - start
-        logger.info("(SEQUENTIAL) Splitting data: " + str(splitdata_time) + " s ")
-        logger.info("(SEQUENTIAL) Splitting data (timeit): " + str(timeit_splitdata_time) + " s ")
-        start = time.time()
-        # self.transfergains()
-        timeit_transfergains_time = timeit.Timer(lambda: self.transfergains(), setup="from apercal import *").timeit(
-            number=1)
-        end = time.time()
-        transfergains_time = end - start
-        logger.info("(SEQUENTIAL) Transfer gains: " + str(transfergains_time) + " s ")
-        logger.info("(SEQUENTIAL) Transfer gains (timeit): " + str(timeit_transfergains_time) + " s ")
-        start = time.time()
-        # self.subtract()
-        timeit_subtract_time = timeit.Timer(lambda: self.subtract(), setup="from apercal import *").timeit(number=1)
-        end = time.time()
-        subtract_time = end - start
-        logger.info("(SEQUENTIAL) Subtract continuum: " + str(subtract_time) + " s ")
-        logger.info("(SEQUENTIAL) Subtract continuum (timeit): " + str(timeit_subtract_time) + " s ")
-        start = time.time()
-        # self.image_line_sequential(threads)
-        timeit_image_line_time = timeit.Timer(lambda: self.image_line_sequential(),
-                                              setup="from apercal import *").timeit(number=1)
-        end = time.time()
-        image_line_time = end - start
-        logger.info("(SEQUENTIAL) Line imaging: " + str(image_line_time) + " s ")
-        logger.info("(SEQUENTIAL) Line imaging (timeit): " + str(timeit_image_line_time) + " s ")
-        logger.info("(SEQUENTIAL) Timing summary: ")
-        logger.info("(SEQUENTIAL) Splitting data: " + str(splitdata_time) + " s ")
-        logger.info("(SEQUENTIAL) Splitting data (timeit): " + str(timeit_splitdata_time) + " s ")
-        logger.info("(SEQUENTIAL) Transfer gains: " + str(transfergains_time) + " s ")
-        logger.info("(SEQUENTIAL) Transfer gains (timeit): " + str(timeit_transfergains_time) + " s ")
-        logger.info("(SEQUENTIAL) Subtract continuum: " + str(subtract_time) + " s ")
-        logger.info("(SEQUENTIAL) Subtract continuum (timeit): " + str(timeit_subtract_time) + " s ")
-        logger.info("(SEQUENTIAL) Line imaging: " + str(image_line_time) + " s ")
-        logger.info("(SEQUENTIAL) Line imaging (timeit): " + str(timeit_image_line_time) + " s ")
-        logger.info("(SEQUENTIAL) Full line module: " + str(
-            splitdata_time + transfergains_time + subtract_time + image_line_time) + " s ")
-        logger.info("(SEQUENTIAL) Full line module (timeit): " + str(
-            timeit_splitdata_time + timeit_transfergains_time + timeit_subtract_time + timeit_image_line_time) + " s ")
         logger.info("CONTINUUM SUBTRACTION done ")
 
     def go_parallel(self, first_level_threads=4, second_level_threads=6):
@@ -213,83 +126,6 @@ class line_parallel(BaseModule):
         self.transfergains_parallel(nthreads)
         self.subtract_parallel(nthreads)
         self.image_line_parallel(threads)
-        pymp.config.nested = original_nested
-        logger.info("CONTINUUM SUBTRACTION done ")
-
-    def go_parallel_timed(self, first_level_threads=4, second_level_threads=6):
-        """
-        Executes the whole continuum subtraction process in the following order:
-        splitdata
-        transfergains
-        subtract
-        """
-        logger.info("Starting CONTINUUM SUBTRACTION ")
-        # build in check on number of threads to prevent excessive demands? (here?)
-        original_nested = pymp.config.nested
-        threads = [first_level_threads, second_level_threads]
-        nthreads = first_level_threads * second_level_threads
-        start = time.time()
-        # self.splitdata_parallel(threads)
-        # not sure this is entirely recommended: if each thread opens own copy of entire file, memory could become full
-        timeit_splitdata_time = timeit.Timer(lambda: self.splitdata_parallel(threads),
-                                             setup="from apercal import *").timeit(number=1)
-        end = time.time()
-        splitdata_time = end - start
-        logger.info("(PARALLEL) Splitting data for " + str(threads) + " ([1st,2nd] level nested) threads: " + str(
-            splitdata_time) + " s ")
-        logger.info(
-            "(PARALLEL) Splitting data for " + str(threads) + " ([1st,2nd] level nested) threads (timeit): " + str(
-                timeit_splitdata_time) + " s ")
-        start = time.time()
-        # self.transfergains_parallel(nthreads)
-        timeit_transfergains_time = timeit.Timer(lambda: self.transfergains_parallel(nthreads),
-                                                 setup="from apercal import *").timeit(number=1)
-        end = time.time()
-        transfergains_time = end - start
-        logger.info("(PARALLEL) Transfer gains for " + str(nthreads) + " threads: " + str(transfergains_time) + " s ")
-        logger.info("(PARALLEL) Transfer gains for " + str(nthreads) + " threads (timeit): " + str(
-            timeit_transfergains_time) + " s ")
-        start = time.time()
-        # self.subtract_parallel(nthreads)
-        timeit_subtract_time = timeit.Timer(lambda: self.subtract_parallel(nthreads),
-                                            setup="from apercal import *").timeit(number=1)
-        end = time.time()
-        subtract_time = end - start
-        logger.info("(PARALLEL) Subtract continuum for " + str(nthreads) + " threads: " + str(subtract_time) + " s ")
-        logger.info("(PARALLEL) Subtract continuum for " + str(nthreads) + " threads (timeit): " + str(
-            timeit_subtract_time) + " s ")
-        start = time.time()
-        # self.image_line_parallel(threads)
-        timeit_image_line_time = timeit.Timer(lambda: self.image_line_parallel(threads),
-                                              setup="from apercal import *").timeit(number=1)
-        end = time.time()
-        image_line_time = end - start
-        logger.info("(PARALLEL) Line imaging for " + str(threads) + " ([1st,2nd] level nested) threads: " + str(
-            image_line_time) + " s ")
-        logger.info(
-            "(PARALLEL) Line imaging for " + str(threads) + " ([1st,2nd] level nested) threads (timeit): " + str(
-                timeit_image_line_time) + " s ")
-        logger.info("(PARALLEL) Timing summary: ")
-        logger.info("(PARALLEL) Splitting data for " + str(threads) + " ([1st,2nd] level nested) threads: " + str(
-            splitdata_time) + " s ")
-        logger.info(
-            "(PARALLEL) Splitting data for " + str(threads) + " ([1st,2nd] level nested) threads (timeit): " + str(
-                timeit_splitdata_time) + " s ")
-        logger.info("(PARALLEL) Transfer gains for " + str(nthreads) + " threads: " + str(transfergains_time) + " s ")
-        logger.info("(PARALLEL) Transfer gains for " + str(nthreads) + " threads (timeit): " + str(
-            timeit_transfergains_time) + " s ")
-        logger.info("(PARALLEL) Subtract continuum for " + str(nthreads) + " threads: " + str(subtract_time) + " s ")
-        logger.info("(PARALLEL) Subtract continuum for " + str(nthreads) + " threads (timeit): " + str(
-            timeit_subtract_time) + " s ")
-        logger.info("(PARALLEL) Line imaging for " + str(threads) + " ([1st,2nd] level nested) threads: " + str(
-            image_line_time) + " s ")
-        logger.info(
-            "(PARALLEL) Line imaging for " + str(threads) + " ([1st,2nd] level nested) threads (timeit): " + str(
-                timeit_image_line_time) + " s ")
-        logger.info("(PARALLEL) Full line module: " + str(
-            splitdata_time + transfergains_time + subtract_time + image_line_time) + " s ")
-        logger.info("(PARALLEL) Full line module (timeit): " + str(
-            timeit_splitdata_time + timeit_transfergains_time + timeit_subtract_time + timeit_image_line_time) + " s ")
         pymp.config.nested = original_nested
         logger.info("CONTINUUM SUBTRACTION done ")
 
@@ -728,7 +564,12 @@ class line_parallel(BaseModule):
                 logger.info(' Continuum subtraction using uvmodel done!')
             else:
                 raise ApercalException(' Subtract mode not know')
-
+        else:
+            chunks_list = self.list_chunks()
+            for index in range(len(chunks_list)):
+                chunk = chunks_list[index]
+                self.director('cp', self.linedir + '/' + chunk + '/' + chunk + '.mir',  self.linedir + '/' + chunk + '/' + chunk + '_line.mir')
+            
     def subtract_parallel(self, nthreads=1):
         """
         Module for subtracting the continuum from the line data. Supports uvlin and uvmodel (creating an image in the
@@ -795,7 +636,12 @@ class line_parallel(BaseModule):
                 logger.info(' (PARALLEL) Continuum subtraction using uvmodel done!')
             else:
                 raise ApercalException(' (PARALLEL) Subtract mode not know. Exiting!')
-
+        else:
+            chunks_list = self.list_chunks()
+            for index in range(len(chunks_list)):
+                chunk = chunks_list[index]
+                self.director('cp', self.linedir + '/' + chunk + '/' + chunk + '_line.mir',  self.linedir + '/' + chunk + '/' + chunk + '.mir')
+            
     def image_line(self):
         """
         Produces a line cube by imaging each individual channel. Saves the images as well as the beam as a FITS-cube.
@@ -1555,6 +1401,15 @@ class line_parallel(BaseModule):
                                        chunk + '! (thread ' + str(p1.thread_num + 1) + ' out of ' +
                                        str(p1.num_threads) + ' 1st level)')
             # new:
+            # add a few dummy files to avoid crashes because files have not been created:
+            self.director('to', self.linedir + '/cubes/' + 'image')
+            self.director('to', self.linedir + '/cubes/' + 'beam')
+            self.director('to', self.linedir + '/cubes/' + 'mask')
+            self.director('to', self.linedir + '/cubes/' + 'model')
+            self.director('to', self.linedir + '/cubes/' + 'map')
+            self.director('to', self.linedir + '/cubes/' + 'convol')
+            self.director('to', self.linedir + '/cubes/' + 'residual')
+            # end extra statements to avoid crashes
             self.director('rm', self.linedir + '/cubes/' + 'image*')
             self.director('rm', self.linedir + '/cubes/' + 'beam*')
             self.director('rm', self.linedir + '/cubes/' + 'mask*')
@@ -1571,7 +1426,7 @@ class line_parallel(BaseModule):
             else:
                 nchans = nchunks * nchannel
             startfreq = get_freqstart(self.crosscaldir + '/' + self.target,
-                                           int(str(self.line_image_channels).split(',')[0]))
+                                      int(str(self.line_image_channels).split(',')[0]))
             self.create_linecube(self.linedir + '/cubes/cube_image_*.fits', 'HI_image_cube.fits', nchans,
                                  int(str(self.line_image_channels).split(',')[0]), startfreq)
             logger.info('(PARALLEL) Created HI-image cube #')
@@ -1894,6 +1749,9 @@ class line_parallel(BaseModule):
         lastmajor = n
         return lastmajor
 
+    def show(self, showall=False):
+        lib.show(self, 'LINE', showall)
+
     def reset(self):
         """
         Function to reset the current step and remove all generated data. Be careful! Deletes all data generated in
@@ -1948,5 +1806,7 @@ class line_parallel(BaseModule):
             lib.basher("cp -r " + str(file_) + " " + str(dest))
         elif option == 'rm':  # Remove
             lib.basher("rm -r " + str(dest))
+        elif option == 'to':  # touch
+            lib.basher("touch " + str(dest))
         else:
             print(' Option not supported! Only mk, ch, mv, rm, rn, and cp are supported!')
